@@ -1,0 +1,19 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+- name: instance
+  image: leandelivery/docker-systemd:centos7
+  privileged: True
+  volumes:
+    - "/sys/fs/cgroup:/sys/fs/cgroup:ro"
+  tty: True
+  environment:
+    container: docker
+    
+provisioner:
+  name: ansible
+verifier:
+  name: ansible

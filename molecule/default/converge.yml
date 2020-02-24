@@ -1,0 +1,7 @@
+---
+- name: Converge
+  hosts: all
+  tasks:
+    - name: "Include joalon.cockpit"
+      include_role:
+        name: "joalon.cockpit"
