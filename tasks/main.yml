@@ -1,53 +1,45 @@
 ---
 
- - name: Gather package facts
-   package_facts:
-     manager: "auto"
+- name: Install Cockpit packages
+  yum:
+    name: [cockpit, cockpit-packagekit, cockpit-storaged]
+    state: installed
 
- - name: Check if chrony is installed
-   debug:
-     msg: "Chrony found"
-   when: "'chrony' in ansible_facts.packages"
-   notify: disable chrony
+- name: Ensure Firewalld is installed and running
+  yum:
+    name: firewalld
+    state: installed
+  notify: enable firewalld
 
- - name: Install ntpd
-   yum:
-     name: ntp
-     state: installed
+- name: Open Firewall
+  firewalld:
+    service: cockpit
+    permanent: yes
+    state: enabled
 
- - name: Configure ntpd
-   template:
-     src: ntp.conf
-     dest: /etc/ntp.conf
-   notify:
-   - restart ntpd
+- name: Generate Openssl private key
+  openssl_privatekey:
+    path: /etc/pki/tls/private/cockpit.key
 
- - name: Start and enable ntpd
-   service:
-     name: ntpd
-     enabled: yes
-     state: started
+- name: Create new IPA Cockpit service
+  ipa_service:
+    name: cockpit/{{ ansible_fqdn }}
+    state: present
+    ipa_host: ipa.home.joalon.se
+    ipa_user: admin
+    # ipa_pass: topsecret
 
- - name: Install Cockpit packages
-   yum:
-     name: [cockpit, cockpit-packagekit, cockpit-storaged]
-     state: installed
+- name: Track Cockpit TLS certificate
+  command:
+    cmd: 'ipa-getcert request
+      -f /etc/cockpit/ws-certs.d/10-ipa.cert
+      -k /etc/pki/tls/private/cockpit.key
+      --principal cockpit/"{{ ansible_fqdn }}"
+      -C "cat /etc/pki/tls/private/cockpit.key >> /etc/cockpit/ws-certs.d/10-ipa.cert"'
+    creates: /etc/cockpit/ws-certs.d/10-ipa.cert
 
- - name: Ensure Firewalld is installed and running
-   yum:
-     name: firewalld
-     state: installed
-   notify: enable firewalld
-
- - name: Open Firewall
-   firewalld:
-     service: cockpit
-     permanent: yes
-     state: enabled
-
- - name: Start Cockpit socket
-   service:
-     name: cockpit.socket
-     enabled: yes
-     state: started
-
+- name: Start Cockpit socket
+  service:
+    name: cockpit.socket
+    enabled: yes
+    state: started
